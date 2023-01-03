@@ -1,4 +1,5 @@
 import abc
+import numpy as np
 
 import gtimer as gt
 from rlkit.core.rl_algorithm import BaseRLAlgorithm
@@ -79,14 +80,23 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
                 discard_incomplete_paths=False,
             )
             gt.stamp('exploration sampling', unique=False)
-
             if not self.offline_rl:
                 self.replay_buffer.add_paths(new_expl_paths)
             gt.stamp('data storing', unique=False)
 
+            train_step_reward = []
+            train_sum_reward = []
+            train_sum_episode = []
             self.training_mode(True)
-            for _ in range(self.num_trains_per_train_loop):
+            for __ in range(self.num_trains_per_train_loop):
                 train_data = self.replay_buffer.random_batch(self.batch_size)
+                train_step_reward.append(train_data['rewards'].mean())
+                train_sum_reward.append(train_data['rewards'].sum())
+                train_sum_episode.append(train_data['terminals'].sum())
                 self.trainer.train(train_data)
             gt.stamp('training', unique=False)
+            print("*" * 10, 'epoch', self.epoch, 'loop', _, "*" * 10)
+            print('train step reward:', np.mean(train_step_reward))
+            print('train episode reward:', np.sum(train_sum_reward) / np.sum(train_sum_episode))
+            print("*" * 30)
             self.training_mode(False)
