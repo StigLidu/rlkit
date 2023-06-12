@@ -25,6 +25,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             num_train_loops_per_epoch=1,
             min_num_steps_before_training=0,
             start_epoch=0, # negative epochs are offline, positive epochs are online
+            eval=False,
     ):
         super().__init__(
             trainer,
@@ -34,6 +35,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             evaluation_data_collector,
             replay_buffer,
         )
+        self.eval = eval
         self.batch_size = batch_size
         self.max_path_length = max_path_length
         self.num_epochs = num_epochs
@@ -73,6 +75,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
         )
         gt.stamp('evaluation sampling')
 
+        if (self.eval): return
         for _ in range(self.num_train_loops_per_epoch):
             new_expl_paths = self.expl_data_collector.collect_new_paths(
                 self.max_path_length,
@@ -95,8 +98,4 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
                 train_sum_episode.append(train_data['terminals'].sum())
                 self.trainer.train(train_data)
             gt.stamp('training', unique=False)
-            print("*" * 10, 'epoch', self.epoch, 'loop', _, "*" * 10)
-            print('train step reward:', np.mean(train_step_reward))
-            print('train episode reward:', np.sum(train_sum_reward) / np.sum(train_sum_episode))
-            print("*" * 30)
             self.training_mode(False)
